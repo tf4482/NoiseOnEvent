@@ -6,8 +6,10 @@ pings, your sound replaces the game's ping sound.
 ## Features
 
 - **Critical hit** - your sound when your target takes a critical hit, from anyone; the
-  game hides the source of a hit from addons.
+  game hides the source of a hit from addons; a spam protection (0-10 seconds, default 1)
+  sets the shortest time between two crit sounds.
 - **Herb gathered** - your sound when an herb gathering cast succeeds.
+- **Ore mined** - your sound when a mining cast succeeds.
 - **Pings** - one sound per ping type (attack, warning, assist, on my way, threat, look
   here, spell or item ping); the game's sound for that type is muted while one is set.
 - **Own sounds** - any `.mp3` or `.ogg` files in the addon's `Sounds` folder, listed in
@@ -15,8 +17,8 @@ pings, your sound replaces the game's ping sound.
   chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
-- **Settings page** - one dropdown per event in the game menu under Options > AddOns, also
-  opened from the addon compartment menu.
+- **Settings page** - one dropdown and a Test button per event in the game menu under
+  Options > AddOns, also opened from the addon compartment menu.
 - **Chat commands** - every event can also be set by slash command.
 
 ## Install
@@ -44,7 +46,9 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 ```text
 /noise                        show the sound of every event
 /noise crit <sound>|off       sound on critical hits on your target
+/noise critdelay <seconds>    spam protection for critical hits, 0 to 10
 /noise herb <sound>|off       sound when you gather an herb
+/noise mining <sound>|off     sound when you mine a deposit
 /noise attack <sound>|off     sound for attack pings (off: game sound)
 /noise warning <sound>|off    sound for warning pings
 /noise assist <sound>|off     sound for assist pings
@@ -52,6 +56,7 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 /noise threat <sound>|off     sound for threatening alert pings
 /noise nonthreat <sound>|off  sound for look-here pings, and all pings in instance combat
 /noise action <sound>|off     sound for spell and item pings
+/noise test <event>           play the sound chosen for an event, e.g. crit
 /noise character on|off       use settings for this character only, or the account's
 /noise config                 open the settings page
 /noise help                   list all commands
@@ -62,6 +67,9 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 ## Examples
 
 - Kaching on every critical hit: `/noise crit kaching.mp3`.
+- Crits in AoE fights get noisy: `/noise critdelay 5` plays at most one crit sound every
+  5 seconds.
+- Try a sound before playing: pick it in the dropdown and click Test, or `/noise test mining`.
 - Back to the game's attack ping: `/noise attack off` (unmutes it right away).
 - A horn only for warnings: `/noise warning horn.ogg`, the other pings keep the game sound.
 - Your gathering alt should hear herbs, your main not: on the alt type
