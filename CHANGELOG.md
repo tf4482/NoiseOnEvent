@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Added
 
 - `/noise reset` sets the active profile's settings back to defaults; `/noise debug on|off`
@@ -16,7 +18,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - The settings page groups events under headers (Combat, Gathering and loot, Group and
   social, Progress, Pings); the play buttons and clickable event names are gone, use
   `/noise test <event>` instead.
-
 - Own sounds are listed in game with `/noise add <file>`, `/noise remove <file>` and
   `/noise sounds`; the list is saved and survives addon updates.
 - `sounds/update-sounds.bat` is no longer shipped (CurseForge rejects `.bat` files); an
