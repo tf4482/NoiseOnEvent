@@ -8,7 +8,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Added
 
-- Own sound files on critical hits, herb gathering, and pings, from the `Sounds` folder.
-- Game ping sounds muted while the ping trigger is on.
-- Settings page, addon compartment entry, and `/noise` chat commands per trigger.
+- Sound per event chosen from a dropdown: combat (critical hit, critical hit taken,
+  dodge/parry/block, combat start and end, target died, you died, boss pulled and defeated),
+  gathering and loot (herb, ore, skinning, fishing, disenchanting, rare loot, money, auction
+  sold), group (ready check, dungeon finder, PvP queue, invite, whisper), progress (level up,
+  achievement, quest turned in, new mail, gear damaged, bags full, rare or treasure nearby),
+  and each ping type.
+- Durability threshold for the gear damaged sound, 5 to 100 percent.
+- Game sound, own sound, or off for every event the game has a sound for.
+- Small gaps between events on the settings page; pings and sliders stay with their event.
+- Spam protection for critical hit sounds, 0 to 10 seconds.
+- Play button next to each sound dropdown, clickable event names, and `/noise test`.
+- Own `.mp3` and `.ogg` files from the `sounds` folder, listed in `sounds/Sounds.lua`.
+- `sounds/update-sounds.bat` writes all sound files of the folder into `Sounds.lua`.
+- Settings page, addon compartment entry, and `/noise` chat commands per event.
 - Account or per-character settings.

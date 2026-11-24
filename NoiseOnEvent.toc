@@ -1,6 +1,6 @@
 ## Interface: 16001, 120105
 ## Title: NoiseOnEvent
-## Notes: Plays your own sound files on critical hits, herb gathering, and pings
+## Notes: Plays your own sound files on combat, gathering, loot, group, progress events, and pings
 ## Author: tf4482
 ## Version: @project-version@
 ## IconTexture: Interface/Icons/INV_Misc_Horn_01
@@ -11,4 +11,5 @@ Output.lua
 Store.lua
 Settings.lua
 Slash.lua
+sounds/Sounds.lua
 NoiseOnEvent.lua
