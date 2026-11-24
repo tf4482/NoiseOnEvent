@@ -208,6 +208,9 @@ end
 
 -- hit on target or player: critical hits, and dodge, parry, or block of the player
 function events.UNIT_COMBAT(unit, action, flagText)
+  if Secret(action) or Secret(flagText) then
+    return
+  end
   if unit == "target" and action == "WOUND" and flagText == "CRITICAL" then
     Play("crit")
   elseif unit == "player" and action == "WOUND" and flagText == "CRITICAL" then
@@ -418,11 +421,24 @@ local UNIT_EVENTS = {
 
 -- one frame dispatching all events above
 local frame = CreateFrame("Frame")
-for event in pairs(events) do
+
+-- register one event; unit events only for their units
+local function Register(event)
   if UNIT_EVENTS[event] then
     frame:RegisterUnitEvent(event, unpack(UNIT_EVENTS[event]))
   else
     frame:RegisterEvent(event)
+  end
+end
+
+-- skip events this client does not know; pcall when C_EventUtils is missing
+for event in pairs(events) do
+  if C_EventUtils and C_EventUtils.IsEventValid then
+    if C_EventUtils.IsEventValid(event) then
+      Register(event)
+    end
+  else
+    pcall(Register, event)
   end
 end
 frame:SetScript("OnEvent", function(_, event, ...)
