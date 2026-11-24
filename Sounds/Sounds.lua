@@ -1,10 +1,9 @@
 -- NoiseOnEvent sound list: every sound file in this folder, as offered in the dropdowns.
--- Add one line per file, with its exact name in quotes and a comma, e.g. "kaching.mp3",
--- After changing this list type /reload; after adding new files restart the game.
+-- Written by update-sounds.bat; run it again after adding or removing files.
+-- Then type /reload in game; new files need a game restart.
 
 local _, ns = ...
 
--- file names in this folder (.mp3 or .ogg)
+-- file names in this folder
 ns.sounds = {
-  -- "kaching.mp3",
 }
