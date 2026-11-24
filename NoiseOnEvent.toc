@@ -12,5 +12,6 @@ Output.lua
 Store.lua
 Settings.lua
 Slash.lua
+# optional sound list written by your own script, see README
 sounds/Sounds.lua
 NoiseOnEvent.lua

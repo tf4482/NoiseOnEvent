@@ -20,15 +20,14 @@ the game has its own sound for an event, yours replaces it, or you switch it off
 - **Pings** - one sound per ping type (attack, warning, assist, on my way, threat, look
   here, spell or item ping), the game sound, or off.
 - **Own sounds** - any `.mp3` or `.ogg` files in the addon's `sounds` folder, listed in
-  `sounds/Sounds.lua` by `sounds/update-sounds.bat`; a missing file gets one warning in
-  chat.
+  game with `/noise add`; the list is saved and survives updates; a missing file gets one
+  warning in chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
-- **Settings page** - one dropdown with a play button per event in the game menu under
-  Options > AddOns, also opened from the addon compartment menu; clicking an event's name
-  plays its sound too; small gaps keep events apart, pings and sliders stay with their
-  event.
-- **Chat commands** - every event can also be set by slash command.
+- **Settings page** - one dropdown per event in the game menu under Options > AddOns,
+  grouped under headers, also opened from the addon compartment menu.
+- **Chat commands** - every option can also be changed by slash command; `/noise test`
+  plays an event's sound.
 
 ## Screenshots
 
@@ -38,22 +37,39 @@ the game has its own sound for an event, yours replaces it, or you switch it off
 
 1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases) or
    [CurseForge](https://www.curseforge.com/projects/1827447).
-2. Unzip it into `World of Warcraft/<game folder>/Interface/AddOns/`.
-3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/sounds/` and double-click
-   `update-sounds.bat` there; it lists every `.mp3` and `.ogg` file in `Sounds.lua`. On
-   macOS or Linux, list them by hand:
+2. Unzip it into `World of Warcraft/_forever_/Interface/AddOns/`.
+3. Create the folder `Interface/AddOns/NoiseOnEvent/sounds/` and copy your `.mp3` or
+   `.ogg` files into it.
+4. Restart the game (new files are only found after a restart), list each file once with
+   `/noise add <file>`, type `/reload`, then pick a sound per event under
+   Options > AddOns > NoiseOnEvent.
 
-   ```lua
-   ns.sounds = {
-     "kaching.mp3",
-     "bell.ogg",
-   }
-   ```
+Back up the `sounds` folder before updating; an update replaces the addon folder. The
+list itself is saved and stays.
 
-4. Restart the game (new files are only found after a restart), then pick a sound per
-   event under Options > AddOns > NoiseOnEvent.
+### Optional: list all files automatically (Windows)
 
-Back up the `sounds` folder before updating; an update replaces the addon folder.
+Instead of `/noise add` per file, create your own script once. Save this as
+`update-sounds.bat` in the `sounds` folder and double-click it after adding files; it
+writes every `.mp3` and `.ogg` file into `Sounds.lua`, which the addon merges into its
+list on the next game start:
+
+```bat
+@echo off
+rem write every .mp3 and .ogg file in this folder into Sounds.lua
+cd /d "%~dp0"
+chcp 65001 >nul
+> Sounds.lua (
+  echo local _, ns = ...
+  echo ns.sounds = {
+  for %%F in (*.mp3 *.ogg) do echo   "%%F",
+  echo }
+)
+echo [OK] Sounds.lua written - restart the game
+pause
+```
+
+Run it again after every addon update, since the update removes the folder.
 
 ## Usage
 
@@ -64,12 +80,17 @@ Back up the `sounds` folder before updating; an update replaces the addon folder
 /noise critdelay <seconds>        spam protection for critical hits, 0 to 10
 /noise durabilitylimit <percent>  durability threshold for gear damaged, 5 to 100
 /noise test <event>               play the sound chosen for an event
+/noise add <file>                 list a sound file from the sounds folder
+/noise remove <file>              remove a sound file from the list
+/noise sounds                     show the listed sound files
 /noise character on|off           use settings for this character only, or the account's
+/noise reset                      reset the settings to defaults; the sound list stays
+/noise debug on|off               show what the addon does, until /reload
 /noise config                     open the settings page
 /noise help                       list all commands
 ```
 
-`<sound>` is a file name from `sounds/Sounds.lua`; put names with spaces in quotes.
+`<sound>` is a listed file name (`/noise sounds`); put names with spaces in quotes.
 `<event>` is one of:
 
 | Group | Events |
@@ -82,11 +103,12 @@ Back up the `sounds` folder before updating; an update replaces the addon folder
 
 ## Examples
 
+- Add a new sound: copy `horn.ogg` into the `sounds` folder, restart the game, then
+  `/noise add horn.ogg` (it plays once as a check).
 - Kaching on every critical hit: `/noise crit kaching.mp3`.
 - Crits in AoE fights get noisy: `/noise critdelay 5` plays at most one crit sound every
   5 seconds.
-- Try a sound before playing: pick it in the dropdown and click the play button next to
-  it, or type `/noise test mining`.
+- Try a sound before playing: pick it in the dropdown, then type `/noise test mining`.
 - Never miss a dungeon pop: `/noise lfg horn.ogg`.
 - Quiet whispers while streaming: `/noise whisper off`.
 - Repair reminder at half durability: `/noise durabilitylimit 50`, then
@@ -107,8 +129,10 @@ Check the code with [Luacheck](https://github.com/lunarmodules/luacheck) before 
 luacheck .
 ```
 
-Release: push an annotated tag `vX.Y.Z`; GitHub Actions packages the addon with the
-BigWigs packager and publishes it.
+Deploy locally: run `deploy.bat`; it builds `release/NoiseOnEvent-vX.Y.Z.zip` from `VERSION`.
+
+Release: set `VERSION` to `X.Y.Z`, then push an annotated tag `vX.Y.Z`; GitHub Actions
+packages the addon with the BigWigs packager and publishes it.
 
 ## License
 
