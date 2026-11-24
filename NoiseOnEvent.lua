@@ -8,13 +8,17 @@ local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\Sounds\\"
 local HERB_SPELL = 2366
 -- game sound files of all ping types, muted while the ping trigger is on
 local PING_FILES = { 5339002, 5339006, 5340601, 5340605, 5342387, 5350036, 7903953 }
+-- ping types by the icon name in the chat message; pings without icon are spell or item pings
+local PING_TYPES = {
+  attack = true, warning = true, assist = true, onmyway = true, threat = true, nonthreat = true,
+}
 -- combat log damage events and the position of their critical flag
 local CRIT_FLAG = { SWING_DAMAGE = 18, RANGE_DAMAGE = 21, SPELL_DAMAGE = 21, SPELL_PERIODIC_DAMAGE = 21 }
 -- triggers: setting key (also the sound file name), label, and description
 local TRIGGERS = {
   { key = "crit", label = "Critical hit", help = "you land a critical hit" },
   { key = "herb", label = "Herb gathered", help = "you gather an herb" },
-  { key = "ping", label = "Ping", help = "a ping is placed, instead of the game's ping sounds" },
+  { key = "ping", label = "Ping", help = "a ping is placed, one file per ping type, instead of the game's ping sounds" },
 }
 
 -- whether a value is hidden from addons (12.x secret values)
@@ -22,21 +26,22 @@ local function Secret(value)
   return issecretvalue ~= nil and issecretvalue(value)
 end
 
--- time of the last sound per trigger, and triggers already warned about a missing file
+-- time of the last sound per file, and files already warned about as missing
 local lastPlayed, warned = {}, {}
 
--- play the trigger's sound file when its setting is on; warn once when the file is missing
-local function Play(key)
-  if ns.db == nil or not ns.Get(key) or GetTime() - (lastPlayed[key] or 0) < 0.3 then
+-- play a sound file (default: named after the trigger) when the trigger is on; warn once when missing
+local function Play(key, file)
+  file = file or key
+  if ns.db == nil or not ns.Get(key) or GetTime() - (lastPlayed[file] or 0) < 0.3 then
     return
   end
-  lastPlayed[key] = GetTime()
-  if PlaySoundFile(FOLDER .. key .. ".mp3", "Master") or PlaySoundFile(FOLDER .. key .. ".ogg", "Master") then
+  lastPlayed[file] = GetTime()
+  if PlaySoundFile(FOLDER .. file .. ".mp3", "Master") or PlaySoundFile(FOLDER .. file .. ".ogg", "Master") then
     return
   end
-  if not warned[key] then
-    warned[key] = true
-    ns.Warn("Sound file missing: " .. ns.Color("value", "Sounds/" .. key .. ".mp3")
+  if not warned[file] then
+    warned[file] = true
+    ns.Warn("Sound file missing: " .. ns.Color("value", "Sounds/" .. file .. ".mp3")
       .. " or " .. ns.Color("value", ".ogg") .. " (restart the game after adding files)")
   end
 end
@@ -99,9 +104,14 @@ function events.UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
   end
 end
 
--- ping placed by anyone in the group, announced through chat
-function events.CHAT_MSG_PING()
-  Play("ping")
+-- ping placed by anyone in the group, announced through chat; type from the message icon
+function events.CHAT_MSG_PING(text)
+  local kind = "nonthreat"
+  if not Secret(text) then
+    kind = text:match("ping_chat_(%a+)")
+    kind = PING_TYPES[kind] and kind or "action"
+  end
+  Play("ping", "ping_" .. kind)
 end
 
 -- one frame dispatching all events above
@@ -123,7 +133,7 @@ ns.Store("NoiseOnEventDB", { crit = true, herb = true, ping = true }, function()
   ns.Settings()
   for _, trigger in ipairs(TRIGGERS) do
     local onChange = trigger.key == "ping" and UpdatePingMute or nil
-    ns.Checkbox(trigger.key, trigger.label, "Play Sounds/" .. trigger.key .. " when " .. trigger.help, onChange)
+    ns.Checkbox(trigger.key, trigger.label, "Play a sound from the Sounds folder when " .. trigger.help, onChange)
   end
   UpdatePingMute()
 end)
