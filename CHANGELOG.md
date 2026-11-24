@@ -8,8 +8,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ### Added
 
-- Own sound files on critical hits, herb gathering, and pings, from the `Sounds` folder.
-- One sound file per ping type.
-- Game ping sounds muted while the ping trigger is on.
-- Settings page, addon compartment entry, and `/noise` chat commands per trigger.
+- Sound per event chosen from a dropdown: critical hit, herb gathered, and each ping type.
+- Own `.mp3` and `.ogg` files from the `Sounds` folder, listed in `Sounds/Sounds.lua`.
+- Game ping sound of a type muted while an own sound is set for it.
+- Settings page, addon compartment entry, and `/noise` chat commands per event.
 - Account or per-character settings.
