@@ -21,11 +21,11 @@ local READY, PVP, INVITE, WHISPER = 567478, 568011, 567451, 567421
 local LEVEL, ACHIEVEMENT, QUEST = 569593, 569143, 567439
 
 -- events in page order: setting key and chat command, label, description; optional
--- settings slider shown below (setting key, label, min, max, step), game sound files to
--- mute, and group of events shown without spacing
+-- section header shown above, settings slider shown below (setting key, label, min, max,
+-- step), and game sound files to mute
 local EVENTS = {
   { key = "crit", label = "Critical hit", help = "your target takes a critical hit",
-    slider = { "critDelay", "Spam protection (seconds)", 0, 10, 0.5 } },
+    section = "Combat", slider = { "critDelay", "Spam protection (seconds)", 0, 10, 0.5 } },
   { key = "crittaken", label = "Critical hit taken", help = "you take a critical hit" },
   { key = "avoid", label = "Dodge, parry, block", help = "you dodge, parry, or block an attack" },
   { key = "combatstart", label = "Combat start", help = "you enter combat" },
@@ -34,7 +34,8 @@ local EVENTS = {
   { key = "death", label = "You died", help = "you die" },
   { key = "bosspull", label = "Boss pulled", help = "a boss encounter starts" },
   { key = "bosskill", label = "Boss defeated", help = "a boss encounter ends in victory" },
-  { key = "herb", label = "Herb gathered", help = "you gather an herb" },
+  { key = "herb", label = "Herb gathered", help = "you gather an herb",
+    section = "Gathering and loot" },
   { key = "mining", label = "Ore mined", help = "you mine a deposit" },
   { key = "skinning", label = "Skinned", help = "you skin a creature" },
   { key = "fishing", label = "Fish caught", help = "you loot a fishing catch" },
@@ -42,14 +43,16 @@ local EVENTS = {
   { key = "loot", label = "Rare loot", help = "you loot an item of rare quality or better" },
   { key = "money", label = "Money received", help = "your money increases" },
   { key = "auction", label = "Auction sold", help = "an auction of yours sells" },
-  { key = "readycheck", label = "Ready check", help = "a ready check starts", mute = { READY } },
+  { key = "readycheck", label = "Ready check", help = "a ready check starts", mute = { READY },
+    section = "Group and social" },
   { key = "lfg", label = "Dungeon finder ready", help = "the dungeon or raid finder finds a group",
     mute = { READY } },
   { key = "pvp", label = "PvP queue ready", help = "a battleground or arena is ready",
     mute = { READY, PVP } },
   { key = "invite", label = "Group invite", help = "you are invited to a group", mute = { INVITE } },
   { key = "whisper", label = "Whisper", help = "you receive a whisper", mute = { WHISPER } },
-  { key = "levelup", label = "Level up", help = "you reach a new level", mute = { LEVEL } },
+  { key = "levelup", label = "Level up", help = "you reach a new level", mute = { LEVEL },
+    section = "Progress" },
   { key = "achievement", label = "Achievement", help = "you earn an achievement", mute = { ACHIEVEMENT } },
   { key = "quest", label = "Quest turned in", help = "you turn in a quest", mute = { QUEST } },
   { key = "mail", label = "New mail", help = "new mail arrives" },
@@ -58,19 +61,16 @@ local EVENTS = {
   { key = "bagsfull", label = "Bags full", help = "your bags are full" },
   { key = "rare", label = "Rare or treasure nearby", help = "a rare or treasure appears on the minimap" },
   { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = { 5350036 },
-    group = "ping" },
-  { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = { 5342387 },
-    group = "ping" },
-  { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = { 5339006 },
-    group = "ping" },
-  { key = "onmyway", label = "Ping: On my way", help = "an on-my-way ping is placed", mute = { 5340605 },
-    group = "ping" },
+    section = "Pings" },
+  { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = { 5342387 } },
+  { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = { 5339006 } },
+  { key = "onmyway", label = "Ping: On my way", help = "an on-my-way ping is placed", mute = { 5340605 } },
   { key = "threat", label = "Ping: Threat", help = "a threatening alert ping is placed",
-    mute = { 5340601 }, group = "ping" },
+    mute = { 5340601 } },
   { key = "nonthreat", label = "Ping: Look here", help = "a look-here ping is placed",
-    mute = { 5339002 }, group = "ping" },
+    mute = { 5339002 } },
   { key = "action", label = "Ping: Spell or item", help = "a spell or item ping is placed",
-    mute = { 7903953 }, group = "ping" },
+    mute = { 7903953 } },
 }
 -- ping events by the icon name in the chat message; pings without icon are spell or item pings
 local PING_ICONS = {
@@ -83,8 +83,8 @@ local function Secret(value)
   return issecretvalue ~= nil and issecretvalue(value)
 end
 
--- time of the last sound per event, and files already warned about as missing
-local lastPlayed, warned = {}, {}
+-- sound files already warned about as missing
+local warned = {}
 
 -- events by setting key
 local byKey = {}
@@ -96,15 +96,14 @@ end
 -- when its file is missing
 local function Play(key)
   local sound = ns.db ~= nil and ns.Get(key) or ""
-  local event = byKey[key]
   local delay = MIN_DELAY
-  if event.key == "crit" then
+  if key == "crit" then
     delay = math.max(MIN_DELAY, ns.Get("critDelay"))
   end
-  if sound == "" or sound == OFF or GetTime() - (lastPlayed[key] or 0) < delay then
+  if sound == "" or sound == OFF or not ns.Throttle("sound:" .. key, delay) then
     return
   end
-  lastPlayed[key] = GetTime()
+  ns.Debug("play " .. key .. ": " .. sound)
   if not PlaySoundFile(FOLDER .. sound, "Master") and not warned[sound] then
     warned[sound] = true
     ns.Warn("Sound file missing: " .. ns.Color("value", "sounds/" .. sound)
@@ -462,78 +461,8 @@ local function ListedIndex(sound)
   end
 end
 
--- layout of this addon's settings page, for controls the Settings component lacks
-local function Layout()
-  local title = C_AddOns.GetAddOnMetadata(ADDON, "Title") or ADDON
-  for _, category in ipairs(SettingsPanel:GetAllCategories()) do
-    if category:GetName() == title then
-      return SettingsPanel:GetLayout(category)
-    end
-  end
-end
-
--- empty row of a few pixels between groups of events
-local function AddSpacer(layout)
-  local spacer = CreateSettingsListSectionHeaderInitializer("")
-  spacer.GetExtent = function() return 12 end
-  layout:AddInitializer(spacer)
-end
-
--- play the sound of the event a row frame shows now, if it is one of ours
-local function PlayRow(frame)
-  if frame.noiseOnEventEvent then
-    Test(frame.noiseOnEventEvent)
-  end
-end
-
--- small play button to the right of a dropdown row and a clickable event name, set up once
--- per pooled row frame
-local function ShowPlayButton(frame, event)
-  frame.noiseOnEventEvent = event
-  local button = frame.noiseOnEventPlay
-  if not button then
-    -- the name area plays the sound on click; other rows using this frame stay silent
-    frame.Tooltip:HookScript("OnMouseUp", function() PlayRow(frame) end)
-    button = CreateFrame("Button", nil, frame)
-    button:SetSize(26, 26)
-    button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
-    button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
-    button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    button:SetPoint("LEFT", frame.Control, "RIGHT", 8, 0)
-    -- tooltip naming the action
-    button:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:SetText("Play")
-      GameTooltip:Show()
-    end)
-    button:SetScript("OnLeave", GameTooltip_Hide)
-    button:SetScript("OnClick", function() PlayRow(frame) end)
-    frame.noiseOnEventPlay = button
-  end
-  button:Show()
-end
-
--- add the play button and clickable name to the dropdown just added; undo both when the
--- row frame is reused
-local function AddPlayButton(layout, event)
-  local initializers = layout:GetInitializers()
-  local initializer = initializers[#initializers]
-  local initFrame, resetter = initializer.InitFrame, initializer.Resetter
-  function initializer:InitFrame(frame)
-    initFrame(self, frame)
-    ShowPlayButton(frame, event)
-  end
-  function initializer:Resetter(frame)
-    frame.noiseOnEventEvent = nil
-    if frame.noiseOnEventPlay then
-      frame.noiseOnEventPlay:Hide()
-    end
-    resetter(self, frame)
-  end
-end
-
--- settings page: per event a sound dropdown with play button and its slider, a small gap
--- between events except within a group; game sound mutes applied once loaded
+-- settings page: per event a sound dropdown and its slider, a header above each group of
+-- events; game sound mutes applied once loaded
 ns.Store("NoiseOnEventDB", defaults, function()
   SOUNDS = ns.db.sounds
   -- merge the optional player-written sounds/Sounds.lua into the saved list
@@ -543,13 +472,10 @@ ns.Store("NoiseOnEventDB", defaults, function()
     end
   end
   ns.Settings()
-  local layout = Layout()
-  local previous
   for _, event in ipairs(EVENTS) do
-    if layout and previous and not (event.group and event.group == previous.group) then
-      AddSpacer(layout)
+    if event.section then
+      ns.Header(event.section)
     end
-    previous = event
     local choices = { { "", SoundName(event, "") } }
     if event.mute then
       table.insert(choices, { OFF, OFF })
@@ -559,9 +485,6 @@ ns.Store("NoiseOnEventDB", defaults, function()
     end
     local onChange = event.mute and UpdateMutes or nil
     ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
-    if layout then
-      AddPlayButton(layout, event)
-    end
     if event.slider then
       local key, label, min, max, step = unpack(event.slider)
       ns.Slider(key, label, min, max, step, label .. " for " .. event.label:lower())
@@ -678,6 +601,24 @@ ns.Command({
   help = "show the listed sound files",
   run = function()
     ns.Status("Sounds", #SOUNDS > 0 and table.concat(SOUNDS, ", ") or ns.Color("muted", "none"))
+  end,
+})
+ns.Command({
+  name = "reset",
+  help = "reset the active profile's settings to defaults; the sound list stays",
+  run = function()
+    ns.ResetSettings()
+    ns.Success("settings reset to defaults")
+    Status()
+  end,
+})
+ns.Command({
+  name = "debug",
+  help = "show what the addon does in chat, until /reload",
+  args = { { name = "state", choices = { "on", "off" } } },
+  run = function(args)
+    ns.debug = args.state == "on"
+    ns.Status("debug", ns.OnOff(ns.debug))
   end,
 })
 ns.Command({ name = "config", help = "open the settings page", run = ns.OpenSettings })
