@@ -3,8 +3,8 @@
 local ADDON, ns = ...
 
 -- folder with the sound files supplied by the player
-local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\Sounds\\"
--- sound files listed by the player in Sounds/Sounds.lua
+local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\sounds\\"
+-- sound files listed by the player in sounds/Sounds.lua
 local SOUNDS = ns.sounds or {}
 -- shortest time between two sounds of one event, in seconds
 local MIN_DELAY = 0.3
@@ -56,7 +56,7 @@ local function Play(key)
   lastPlayed[key] = GetTime()
   if not PlaySoundFile(FOLDER .. sound, "Master") and not warned[sound] then
     warned[sound] = true
-    ns.Warn("Sound file missing: " .. ns.Color("value", "Sounds/" .. sound)
+    ns.Warn("Sound file missing: " .. ns.Color("value", "sounds/" .. sound)
       .. " (restart the game after adding files)")
   end
 end
@@ -99,7 +99,7 @@ local function Status()
   ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
   if #SOUNDS == 0 then
-    ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "Sounds/Sounds.lua"))
+    ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "sounds/Sounds.lua"))
   end
 end
 
