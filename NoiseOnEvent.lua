@@ -1,4 +1,4 @@
--- NoiseOnEvent: plays player-chosen sound files on critical hits, herb gathering, and pings
+-- NoiseOnEvent: plays player-chosen sound files on critical hits, gathering, and pings
 
 local ADDON, ns = ...
 
@@ -6,12 +6,16 @@ local ADDON, ns = ...
 local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\Sounds\\"
 -- sound files listed by the player in Sounds/Sounds.lua
 local SOUNDS = ns.sounds or {}
--- base spell whose localized name identifies herb gathering casts
-local HERB_SPELL = 2366
--- events: setting key and chat command, label, description, and for pings the game sound to mute
+-- shortest time between two sounds of one event, in seconds
+local MIN_DELAY = 0.3
+-- base spells whose localized names identify gathering casts
+local HERB_SPELL, MINING_SPELL = 2366, 2575
+-- events: setting key and chat command, label, description, optional spam protection
+-- setting, and for pings the game sound to mute
 local EVENTS = {
-  { key = "crit", label = "Critical hit", help = "your target takes a critical hit" },
+  { key = "crit", label = "Critical hit", help = "your target takes a critical hit", delay = "critDelay" },
   { key = "herb", label = "Herb gathered", help = "you gather an herb" },
+  { key = "mining", label = "Ore mined", help = "you mine a deposit" },
   { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = 5350036 },
   { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = 5342387 },
   { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = 5339006 },
@@ -34,10 +38,19 @@ end
 -- time of the last sound per event, and files already warned about as missing
 local lastPlayed, warned = {}, {}
 
--- play the sound chosen for an event; warn once when its file is missing
+-- events by setting key
+local byKey = {}
+for _, event in ipairs(EVENTS) do
+  byKey[event.key] = event
+end
+
+-- play the sound chosen for an event, at most once per spam protection time; warn once
+-- when its file is missing
 local function Play(key)
   local sound = ns.db ~= nil and ns.Get(key) or ""
-  if sound == "" or GetTime() - (lastPlayed[key] or 0) < 0.3 then
+  local event = byKey[key]
+  local delay = math.max(MIN_DELAY, event.delay and ns.Get(event.delay) or 0)
+  if sound == "" or GetTime() - (lastPlayed[key] or 0) < delay then
     return
   end
   lastPlayed[key] = GetTime()
@@ -65,12 +78,25 @@ local function SoundName(event, sound)
   return event.mute and "game sound" or "off"
 end
 
+-- test button and command: the chosen sound, or the game's ping sound when none is set
+local function Test(event)
+  local sound = ns.Get(event.key)
+  if sound ~= "" then
+    PlaySoundFile(FOLDER .. sound, "Master")
+  elseif event.mute then
+    PlaySoundFile(event.mute, "Master")
+  else
+    ns.Warn(event.label .. ": no sound chosen")
+  end
+end
+
 -- current sound of every event
 local function Status()
   for _, event in ipairs(EVENTS) do
     local sound = ns.Get(event.key)
     ns.Status(event.label, sound == "" and ns.Color("muted", SoundName(event, sound)) or sound)
   end
+  ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
   if #SOUNDS == 0 then
     ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "Sounds/Sounds.lua"))
@@ -87,14 +113,19 @@ function events.UNIT_COMBAT(_, action, flagText)
   end
 end
 
--- own cast finished: herb gathering
+-- own cast finished: herb gathering or mining
 function events.UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
   if not spellID or Secret(spellID) then
     return
   end
   local name = C_Spell.GetSpellName(spellID)
-  if name and name == C_Spell.GetSpellName(HERB_SPELL) then
+  if not name then
+    return
+  end
+  if name == C_Spell.GetSpellName(HERB_SPELL) then
     Play("herb")
+  elseif name == C_Spell.GetSpellName(MINING_SPELL) then
+    Play("mining")
   end
 end
 
@@ -117,15 +148,27 @@ frame:SetScript("OnEvent", function(_, event, ...)
   events[event](...)
 end)
 
--- saved state: no sound for any event by default
-local defaults = {}
+-- saved state: no sound for any event by default, one second crit spam protection
+local defaults = { critDelay = 1 }
 for _, event in ipairs(EVENTS) do
   defaults[event.key] = ""
 end
 
--- settings page with one sound dropdown per event, and the ping mutes, once loaded
+-- layout of this addon's settings page, for test buttons the Settings component lacks
+local function Layout()
+  local title = C_AddOns.GetAddOnMetadata(ADDON, "Title") or ADDON
+  for _, category in ipairs(SettingsPanel:GetAllCategories()) do
+    if category:GetName() == title then
+      return SettingsPanel:GetLayout(category)
+    end
+  end
+end
+
+-- settings page: per event a sound dropdown, crit spam protection, and a test button;
+-- ping mutes applied once loaded
 ns.Store("NoiseOnEventDB", defaults, function()
   ns.Settings()
+  local layout = Layout()
   for _, event in ipairs(EVENTS) do
     local choices = { { "", SoundName(event, "") } }
     for _, sound in ipairs(SOUNDS) do
@@ -133,6 +176,14 @@ ns.Store("NoiseOnEventDB", defaults, function()
     end
     local onChange = event.mute and function() UpdateMute(event) end or nil
     ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
+    if event.delay then
+      ns.Slider(event.delay, "Spam protection (seconds)", 0, 10, 0.5,
+        "Shortest time between two sounds for " .. event.label:lower())
+    end
+    if layout then
+      layout:AddInitializer(CreateSettingsButtonInitializer("", "Test", function() Test(event) end,
+        "Play the sound chosen for " .. event.label:lower(), false))
+    end
     if event.mute then
       UpdateMute(event)
     end
@@ -167,6 +218,26 @@ for _, event in ipairs(EVENTS) do
     end,
   })
 end
+ns.Command({
+  name = "critdelay",
+  help = "spam protection: shortest time between two critical hit sounds",
+  args = { { name = "seconds", type = "number", min = 0, max = 10 } },
+  run = function(args)
+    ns.Set("critDelay", args.seconds)
+    ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
+  end,
+})
+-- event keys for the test command
+local keys = {}
+for _, event in ipairs(EVENTS) do
+  table.insert(keys, event.key)
+end
+ns.Command({
+  name = "test",
+  help = "play the sound chosen for an event",
+  args = { { name = "event", choices = keys } },
+  run = function(args) Test(byKey[args.event]) end,
+})
 ns.Command({
   name = "character",
   help = "use settings for this character only, or the account's",
