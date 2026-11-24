@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `/noise reset` sets the active profile's settings back to defaults; `/noise debug on|off`
+  shows each played sound in chat until `/reload`.
+
+### Changed
+
+- The settings page groups events under headers (Combat, Gathering and loot, Group and
+  social, Progress, Pings); the play buttons and clickable event names are gone, use
+  `/noise test <event>` instead.
+
+- Own sounds are listed in game with `/noise add <file>`, `/noise remove <file>` and
+  `/noise sounds`; the list is saved and survives addon updates.
+- `sounds/update-sounds.bat` is no longer shipped (CurseForge rejects `.bat` files); an
+  optional `sounds/Sounds.lua` written by your own script is still merged into the list.
+
+### Fixed
+
+- Skip events the client does not know instead of failing to load; ignore secret combat
+  values in hit sounds.
+
 ## [0.1.0] - 2026-11-24
 
 ### Added

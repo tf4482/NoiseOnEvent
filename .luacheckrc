@@ -1,8 +1,44 @@
--- Luacheck settings: catch accidental globals and unused variables
+-- Luacheck settings: catch accidental globals, unknown API names, and unused variables
 std = "lua51"
 max_line_length = false
 exclude_files = { "Libs/", ".release/" }
--- WoW API reads stay unlisted; writes to undeclared globals still fail
-ignore = { "113" }
--- globals the addon may write
-globals = { "SlashCmdList" }
+-- globals the addon writes; append its BINDING_* names
+globals = {
+  "SlashCmdList",
+}
+-- WoW API read by the shared components and template; append every global the addon reads
+read_globals = {
+  "AddonCompartmentFrame",
+  "C_AddOns",
+  "C_EventUtils",
+  "C_KeyBindings",
+  "CreateFrame",
+  "CreateKeybindingEntryInitializer",
+  "CreateSettingsListSectionHeaderInitializer",
+  "GetLocale",
+  "GetTime",
+  "hooksecurefunc",
+  "InCombatLockdown",
+  "IsInGroup",
+  "IsInInstance",
+  "IsInRaid",
+  "MinimalSliderWithSteppersMixin",
+  "Settings",
+  "C_Item",
+  "C_Spell",
+  "C_VignetteInfo",
+  "ERR_BAG_FULL",
+  "ERR_INV_FULL",
+  "Enum",
+  "GetBattlefieldStatus",
+  "GetInventoryItemDurability",
+  "GetMoney",
+  "HasNewMail",
+  "IsFishingLoot",
+  "issecretvalue",
+  "MuteSoundFile",
+  "PlaySoundFile",
+  "UnitGUID",
+  "UnitIsDead",
+  "UnmuteSoundFile",
+}
