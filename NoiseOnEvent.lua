@@ -90,24 +90,6 @@ local function Test(event)
   end
 end
 
--- events whose sound changed in this frame
-local changed = {}
-
--- preview a newly chosen sound; several changes in one frame are a profile switch and stay silent
-local function Preview(event)
-  table.insert(changed, event)
-  if #changed > 1 then
-    return
-  end
-  C_Timer.After(0, function()
-    local only = #changed == 1 and changed[1]
-    changed = {}
-    if only and (only.mute or ns.Get(only.key) ~= "") then
-      Test(only)
-    end
-  end)
-end
-
 -- current sound of every event
 local function Status()
   for _, event in ipairs(EVENTS) do
@@ -232,13 +214,7 @@ ns.Store("NoiseOnEventDB", defaults, function()
     for _, sound in ipairs(SOUNDS) do
       table.insert(choices, { sound, sound })
     end
-    -- ping mute follows the choice; every choice plays once as preview
-    local function onChange()
-      if event.mute then
-        UpdateMute(event)
-      end
-      Preview(event)
-    end
+    local onChange = event.mute and function() UpdateMute(event) end or nil
     ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
     if layout then
       AddPlayButton(layout, event)
