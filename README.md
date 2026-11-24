@@ -17,7 +17,7 @@ pings, your sound replaces the game's ping sound.
   chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
-- **Settings page** - one dropdown and a Test button per event in the game menu under
+- **Settings page** - one dropdown with a play button per event in the game menu under
   Options > AddOns, also opened from the addon compartment menu.
 - **Chat commands** - every event can also be set by slash command.
 
@@ -69,7 +69,7 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 - Kaching on every critical hit: `/noise crit kaching.mp3`.
 - Crits in AoE fights get noisy: `/noise critdelay 5` plays at most one crit sound every
   5 seconds.
-- Try a sound before playing: pick it in the dropdown and click Test, or `/noise test mining`.
+- Try a sound before playing: pick it in the dropdown and click the play button next to it, or `/noise test mining`.
 - Back to the game's attack ping: `/noise attack off` (unmutes it right away).
 - A horn only for warnings: `/noise warning horn.ogg`, the other pings keep the game sound.
 - Your gathering alt should hear herbs, your main not: on the alt type
