@@ -24,11 +24,10 @@ the game has its own sound for an event, yours replaces it, or you switch it off
   warning in chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
-- **Settings page** - one dropdown with a play button per event in the game menu under
-  Options > AddOns, also opened from the addon compartment menu; clicking an event's name
-  plays its sound too; small gaps keep events apart, pings and sliders stay with their
-  event.
-- **Chat commands** - every event can also be set by slash command.
+- **Settings page** - one dropdown per event in the game menu under Options > AddOns,
+  grouped under headers, also opened from the addon compartment menu.
+- **Chat commands** - every option can also be changed by slash command; `/noise test`
+  plays an event's sound.
 
 ## Screenshots
 
@@ -38,7 +37,7 @@ the game has its own sound for an event, yours replaces it, or you switch it off
 
 1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases) or
    [CurseForge](https://www.curseforge.com/projects/1827447).
-2. Unzip it into `World of Warcraft/<game folder>/Interface/AddOns/`.
+2. Unzip it into `World of Warcraft/_forever_/Interface/AddOns/`.
 3. Create the folder `Interface/AddOns/NoiseOnEvent/sounds/` and copy your `.mp3` or
    `.ogg` files into it.
 4. Restart the game (new files are only found after a restart), list each file once with
@@ -85,6 +84,8 @@ Run it again after every addon update, since the update removes the folder.
 /noise remove <file>              remove a sound file from the list
 /noise sounds                     show the listed sound files
 /noise character on|off           use settings for this character only, or the account's
+/noise reset                      reset the settings to defaults; the sound list stays
+/noise debug on|off               show what the addon does, until /reload
 /noise config                     open the settings page
 /noise help                       list all commands
 ```
@@ -107,8 +108,7 @@ Run it again after every addon update, since the update removes the folder.
 - Kaching on every critical hit: `/noise crit kaching.mp3`.
 - Crits in AoE fights get noisy: `/noise critdelay 5` plays at most one crit sound every
   5 seconds.
-- Try a sound before playing: pick it in the dropdown and click the play button next to
-  it, or type `/noise test mining`.
+- Try a sound before playing: pick it in the dropdown, then type `/noise test mining`.
 - Never miss a dungeon pop: `/noise lfg horn.ogg`.
 - Quiet whispers while streaming: `/noise whisper off`.
 - Repair reminder at half durability: `/noise durabilitylimit 50`, then
@@ -129,8 +129,10 @@ Check the code with [Luacheck](https://github.com/lunarmodules/luacheck) before 
 luacheck .
 ```
 
-Release: push an annotated tag `vX.Y.Z`; GitHub Actions packages the addon with the
-BigWigs packager and publishes it.
+Deploy locally: run `deploy.bat`; it builds `release/NoiseOnEvent-vX.Y.Z.zip` from `VERSION`.
+
+Release: set `VERSION` to `X.Y.Z`, then push an annotated tag `vX.Y.Z`; GitHub Actions
+packages the addon with the BigWigs packager and publishes it.
 
 ## License
 

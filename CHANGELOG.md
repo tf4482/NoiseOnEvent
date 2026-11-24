@@ -6,7 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Added
+
+- `/noise reset` sets the active profile's settings back to defaults; `/noise debug on|off`
+  shows each played sound in chat until `/reload`.
+
 ### Changed
+
+- The settings page groups events under headers (Combat, Gathering and loot, Group and
+  social, Progress, Pings); the play buttons and clickable event names are gone, use
+  `/noise test <event>` instead.
 
 - Own sounds are listed in game with `/noise add <file>`, `/noise remove <file>` and
   `/noise sounds`; the list is saved and survives addon updates.
