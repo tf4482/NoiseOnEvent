@@ -78,7 +78,7 @@ local function SoundName(event, sound)
   return event.mute and "game sound" or "off"
 end
 
--- test button and command: the chosen sound, or the game's ping sound when none is set
+-- play button and test command: the chosen sound, or the game's ping sound when none is set
 local function Test(event)
   local sound = ns.Get(event.key)
   if sound ~= "" then
@@ -154,7 +154,7 @@ for _, event in ipairs(EVENTS) do
   defaults[event.key] = ""
 end
 
--- layout of this addon's settings page, for test buttons the Settings component lacks
+-- layout of this addon's settings page, for play buttons the Settings component lacks
 local function Layout()
   local title = C_AddOns.GetAddOnMetadata(ADDON, "Title") or ADDON
   for _, category in ipairs(SettingsPanel:GetAllCategories()) do
@@ -164,7 +164,47 @@ local function Layout()
   end
 end
 
--- settings page: per event a sound dropdown, crit spam protection, and a test button;
+-- small play button to the right of a dropdown row, created once per pooled row frame
+local function ShowPlayButton(frame, event)
+  local button = frame.noiseOnEventPlay
+  if not button then
+    button = CreateFrame("Button", nil, frame)
+    button:SetSize(26, 26)
+    button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    button:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
+    button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    button:SetPoint("LEFT", frame.Control, "RIGHT", 8, 0)
+    -- tooltip naming the action
+    button:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetText("Play")
+      GameTooltip:Show()
+    end)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    frame.noiseOnEventPlay = button
+  end
+  button:SetScript("OnClick", function() Test(event) end)
+  button:Show()
+end
+
+-- add the play button to the dropdown just added; hide it when the row frame is reused
+local function AddPlayButton(layout, event)
+  local initializers = layout:GetInitializers()
+  local initializer = initializers[#initializers]
+  local initFrame, resetter = initializer.InitFrame, initializer.Resetter
+  function initializer:InitFrame(frame)
+    initFrame(self, frame)
+    ShowPlayButton(frame, event)
+  end
+  function initializer:Resetter(frame)
+    if frame.noiseOnEventPlay then
+      frame.noiseOnEventPlay:Hide()
+    end
+    resetter(self, frame)
+  end
+end
+
+-- settings page: per event a sound dropdown with play button, and crit spam protection;
 -- ping mutes applied once loaded
 ns.Store("NoiseOnEventDB", defaults, function()
   ns.Settings()
@@ -176,13 +216,12 @@ ns.Store("NoiseOnEventDB", defaults, function()
     end
     local onChange = event.mute and function() UpdateMute(event) end or nil
     ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
+    if layout then
+      AddPlayButton(layout, event)
+    end
     if event.delay then
       ns.Slider(event.delay, "Spam protection (seconds)", 0, 10, 0.5,
         "Shortest time between two sounds for " .. event.label:lower())
-    end
-    if layout then
-      layout:AddInitializer(CreateSettingsButtonInitializer("", "Test", function() Test(event) end,
-        "Play the sound chosen for " .. event.label:lower(), false))
     end
     if event.mute then
       UpdateMute(event)
