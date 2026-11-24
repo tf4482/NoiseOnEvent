@@ -11,6 +11,8 @@ local SOUNDS = ns.sounds or {}
 local OFF = "off"
 -- shortest time between two sounds of one event, in seconds
 local MIN_DELAY = 0.3
+-- lowest item quality for the rare loot sound
+local RARE = Enum.ItemQuality and Enum.ItemQuality.Rare or 3
 -- base spells whose localized names identify profession casts
 local SPELLS = { herb = 2366, mining = 2575, skinning = 8613, disenchant = 13262 }
 -- game sound files: ready check (also dungeon finder and PvP), PvP queue, invite, whisper,
@@ -288,9 +290,9 @@ function events.CHAT_MSG_LOOT(text, ...)
   if Secret(text) or Secret(guid) or guid ~= UnitGUID("player") then
     return
   end
-  local link = text:match("|Hitem:.-|h.-|h")
-  local quality = link and C_Item.GetItemQualityByID(link)
-  if quality and quality >= Enum.ItemQuality.Rare then
+  local itemID = tonumber(text:match("|Hitem:(%d+)"))
+  local quality = itemID and C_Item.GetItemQualityByID(itemID)
+  if quality and quality >= RARE then
     Play("loot")
   end
 end
