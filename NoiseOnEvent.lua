@@ -164,10 +164,21 @@ local function Layout()
   end
 end
 
--- small play button to the right of a dropdown row, created once per pooled row frame
+-- play the sound of the event a row frame shows now, if it is one of ours
+local function PlayRow(frame)
+  if frame.noiseOnEventEvent then
+    Test(frame.noiseOnEventEvent)
+  end
+end
+
+-- small play button to the right of a dropdown row and a clickable event name, set up once
+-- per pooled row frame
 local function ShowPlayButton(frame, event)
+  frame.noiseOnEventEvent = event
   local button = frame.noiseOnEventPlay
   if not button then
+    -- the name area plays the sound on click; other rows using this frame stay silent
+    frame.Tooltip:HookScript("OnMouseUp", function() PlayRow(frame) end)
     button = CreateFrame("Button", nil, frame)
     button:SetSize(26, 26)
     button:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
@@ -181,13 +192,14 @@ local function ShowPlayButton(frame, event)
       GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)
+    button:SetScript("OnClick", function() PlayRow(frame) end)
     frame.noiseOnEventPlay = button
   end
-  button:SetScript("OnClick", function() Test(event) end)
   button:Show()
 end
 
--- add the play button to the dropdown just added; hide it when the row frame is reused
+-- add the play button and clickable name to the dropdown just added; undo both when the
+-- row frame is reused
 local function AddPlayButton(layout, event)
   local initializers = layout:GetInitializers()
   local initializer = initializers[#initializers]
@@ -197,6 +209,7 @@ local function AddPlayButton(layout, event)
     ShowPlayButton(frame, event)
   end
   function initializer:Resetter(frame)
+    frame.noiseOnEventEvent = nil
     if frame.noiseOnEventPlay then
       frame.noiseOnEventPlay:Hide()
     end
