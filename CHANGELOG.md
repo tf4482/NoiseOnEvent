@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 
 ## [Unreleased]
 
+### Changed
+
+- Own sounds are listed in game with `/noise add <file>`, `/noise remove <file>` and
+  `/noise sounds`; the list is saved and survives addon updates.
+- `sounds/update-sounds.bat` is no longer shipped (CurseForge rejects `.bat` files); an
+  optional `sounds/Sounds.lua` written by your own script is still merged into the list.
+
 ### Fixed
 
 - Skip events the client does not know instead of failing to load; ignore secret combat

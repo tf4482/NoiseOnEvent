@@ -5,8 +5,8 @@ local ADDON, ns = ...
 
 -- folder with the sound files supplied by the player
 local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\sounds\\"
--- sound files listed by the player in sounds/Sounds.lua
-local SOUNDS = ns.sounds or {}
+-- sound files listed by the player; bound to the saved list once loaded
+local SOUNDS = {}
 -- setting value that silences an event with a game sound; "" keeps the game sound
 local OFF = "off"
 -- shortest time between two sounds of one event, in seconds
@@ -176,7 +176,8 @@ local function Status()
   ns.Status("Durability threshold", ns.Get("durabilityLimit") .. " %")
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
   if #SOUNDS == 0 then
-    ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "sounds/Sounds.lua"))
+    ns.Warn("No sounds listed: copy files into the sounds folder, then "
+      .. ns.Color("value", ns.slash .. " add <file>"))
   end
 end
 
@@ -447,9 +448,18 @@ end)
 
 -- saved state: no sound for any event by default, one second crit spam protection,
 -- durability warning below 20 percent
-local defaults = { critDelay = 1, durabilityLimit = 20 }
+local defaults = { critDelay = 1, durabilityLimit = 20, sounds = {} }
 for _, event in ipairs(EVENTS) do
   defaults[event.key] = ""
+end
+
+-- position of a sound file in the saved list, ignoring case
+local function ListedIndex(sound)
+  for index, listed in ipairs(SOUNDS) do
+    if listed:lower() == sound:lower() then
+      return index
+    end
+  end
 end
 
 -- layout of this addon's settings page, for controls the Settings component lacks
@@ -525,6 +535,13 @@ end
 -- settings page: per event a sound dropdown with play button and its slider, a small gap
 -- between events except within a group; game sound mutes applied once loaded
 ns.Store("NoiseOnEventDB", defaults, function()
+  SOUNDS = ns.db.sounds
+  -- merge the optional player-written sounds/Sounds.lua into the saved list
+  for _, sound in ipairs(ns.sounds or {}) do
+    if not ListedIndex(sound) then
+      table.insert(SOUNDS, sound)
+    end
+  end
   ns.Settings()
   local layout = Layout()
   local previous
@@ -621,6 +638,46 @@ ns.Command({
   run = function(args)
     ns.Set("perCharacter", args.state == "on")
     Status()
+  end,
+})
+ns.Command({
+  name = "add",
+  help = "list a sound file from the sounds folder, e.g. kaching.mp3",
+  args = { { name = "file" } },
+  run = function(args)
+    local file = args.file
+    if not file:lower():match("%.mp3$") and not file:lower():match("%.ogg$") then
+      return ns.Error("Only .mp3 and .ogg files: " .. ns.Color("value", file))
+    end
+    if ListedIndex(file) then
+      return ns.Warn("Already listed: " .. ns.Color("value", file))
+    end
+    table.insert(SOUNDS, file)
+    ns.Success("Sound listed: " .. ns.Color("value", file) .. " - type /reload to see it in the dropdowns")
+    -- preview; fails until the game is restarted after copying new files
+    if not PlaySoundFile(FOLDER .. file, "Master") then
+      ns.Warn("Not playable yet: check the file name, or restart the game after copying it")
+    end
+  end,
+})
+ns.Command({
+  name = "remove",
+  help = "remove a sound file from the list",
+  args = { { name = "file" } },
+  run = function(args)
+    local index = ListedIndex(args.file)
+    if not index then
+      return ns.Error("Not listed: " .. ns.Color("value", args.file))
+    end
+    ns.Success("Sound removed: " .. ns.Color("value", table.remove(SOUNDS, index))
+      .. " - type /reload to update the dropdowns")
+  end,
+})
+ns.Command({
+  name = "sounds",
+  help = "show the listed sound files",
+  run = function()
+    ns.Status("Sounds", #SOUNDS > 0 and table.concat(SOUNDS, ", ") or ns.Color("muted", "none"))
   end,
 })
 ns.Command({ name = "config", help = "open the settings page", run = ns.OpenSettings })
