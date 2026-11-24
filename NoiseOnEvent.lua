@@ -6,6 +6,8 @@ local ADDON, ns = ...
 local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\sounds\\"
 -- sound files listed by the player in sounds/Sounds.lua
 local SOUNDS = ns.sounds or {}
+-- setting value that silences an event with a game sound; "" keeps the game sound
+local OFF = "off"
 -- shortest time between two sounds of one event, in seconds
 local MIN_DELAY = 0.3
 -- base spells whose localized names identify gathering casts
@@ -50,7 +52,7 @@ local function Play(key)
   local sound = ns.db ~= nil and ns.Get(key) or ""
   local event = byKey[key]
   local delay = math.max(MIN_DELAY, event.delay and ns.Get(event.delay) or 0)
-  if sound == "" or GetTime() - (lastPlayed[key] or 0) < delay then
+  if sound == "" or sound == OFF or GetTime() - (lastPlayed[key] or 0) < delay then
     return
   end
   lastPlayed[key] = GetTime()
@@ -61,7 +63,7 @@ local function Play(key)
   end
 end
 
--- mute the game's ping sound while an own sound replaces it
+-- mute the game's ping sound while an own sound or off replaces it
 local function UpdateMute(event)
   if ns.Get(event.key) == "" then
     UnmuteSoundFile(event.mute)
@@ -75,18 +77,23 @@ local function SoundName(event, sound)
   if sound ~= "" then
     return sound
   end
-  return event.mute and "game sound" or "off"
+  return event.mute and "game sound" or OFF
+end
+
+-- whether a setting value plays no own sound file
+local function NoFile(sound)
+  return sound == "" or sound == OFF
 end
 
 -- play button and test command: the chosen sound, or the game's ping sound when none is set
 local function Test(event)
   local sound = ns.Get(event.key)
-  if sound ~= "" then
+  if not NoFile(sound) then
     PlaySoundFile(FOLDER .. sound, "Master")
-  elseif event.mute then
+  elseif sound == "" and event.mute then
     PlaySoundFile(event.mute, "Master")
   else
-    ns.Warn(event.label .. ": no sound chosen")
+    ns.Warn(event.label .. ": sound is off")
   end
 end
 
@@ -94,7 +101,7 @@ end
 local function Status()
   for _, event in ipairs(EVENTS) do
     local sound = ns.Get(event.key)
-    ns.Status(event.label, sound == "" and ns.Color("muted", SoundName(event, sound)) or sound)
+    ns.Status(event.label, NoFile(sound) and ns.Color("muted", SoundName(event, sound)) or sound)
   end
   ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
@@ -224,6 +231,9 @@ ns.Store("NoiseOnEventDB", defaults, function()
   local layout = Layout()
   for _, event in ipairs(EVENTS) do
     local choices = { { "", SoundName(event, "") } }
+    if event.mute then
+      table.insert(choices, { OFF, OFF })
+    end
     for _, sound in ipairs(SOUNDS) do
       table.insert(choices, { sound, sound })
     end
@@ -242,13 +252,17 @@ ns.Store("NoiseOnEventDB", defaults, function()
   end
 end)
 
--- listed sound file matching a chat argument, ignoring case; "" for off
-local function FindSound(word)
-  if word:lower() == "off" then
+-- setting value for a chat argument, ignoring case: a listed sound file, off, or game for
+-- events with a game sound
+local function FindSound(event, word)
+  word = word:lower()
+  if word == OFF then
+    return event.mute and OFF or ""
+  elseif word == "game" and event.mute then
     return ""
   end
   for _, sound in ipairs(SOUNDS) do
-    if sound:lower() == word:lower() then
+    if sound:lower() == word then
       return sound
     end
   end
@@ -258,10 +272,10 @@ end
 for _, event in ipairs(EVENTS) do
   ns.Command({
     name = event.key,
-    help = "sound file (or off) when " .. event.help,
+    help = "sound file, off" .. (event.mute and ", or game" or "") .. " when " .. event.help,
     args = { { name = "sound" } },
     run = function(args)
-      local sound = FindSound(args.sound)
+      local sound = FindSound(event, args.sound)
       if not sound then
         return ns.Error("Unknown sound - listed: " .. ns.Color("value", table.concat(SOUNDS, ", ")))
       end
