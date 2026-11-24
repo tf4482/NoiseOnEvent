@@ -6,6 +6,7 @@
 ## IconTexture: Interface/Icons/INV_Misc_Horn_01
 ## SavedVariables: NoiseOnEventDB
 ## SavedVariablesPerCharacter: NoiseOnEventCharDB
+## X-Curse-Project-ID: 1827447
 
 Output.lua
 Store.lua
