@@ -1,4 +1,4 @@
-## Interface: 16001, 120105
+## Interface: 16001
 ## Title: NoiseOnEvent
 ## Notes: Plays your own sound files on combat, gathering, loot, group, progress events, and pings
 ## Author: tf4482
