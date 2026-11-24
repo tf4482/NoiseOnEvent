@@ -18,7 +18,8 @@ pings, your sound replaces the game's ping sound.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
 - **Settings page** - one dropdown with a play button per event in the game menu under
-  Options > AddOns, also opened from the addon compartment menu.
+  Options > AddOns, also opened from the addon compartment menu; clicking an event's name
+  plays its sound too.
 - **Chat commands** - every event can also be set by slash command.
 
 ## Install
