@@ -11,4 +11,5 @@ Output.lua
 Store.lua
 Settings.lua
 Slash.lua
+Sounds/Sounds.lua
 NoiseOnEvent.lua

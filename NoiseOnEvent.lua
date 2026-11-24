@@ -1,24 +1,31 @@
--- NoiseOnEvent: plays player-supplied sound files on critical hits, herb gathering, and pings
+-- NoiseOnEvent: plays player-chosen sound files on critical hits, herb gathering, and pings
 
 local ADDON, ns = ...
 
 -- folder with the sound files supplied by the player
 local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\Sounds\\"
+-- sound files listed by the player in Sounds/Sounds.lua
+local SOUNDS = ns.sounds or {}
 -- base spell whose localized name identifies herb gathering casts
 local HERB_SPELL = 2366
--- game sound files of all ping types, muted while the ping trigger is on
-local PING_FILES = { 5339002, 5339006, 5340601, 5340605, 5342387, 5350036, 7903953 }
--- ping types by the icon name in the chat message; pings without icon are spell or item pings
-local PING_TYPES = {
-  attack = true, warning = true, assist = true, onmyway = true, threat = true, nonthreat = true,
-}
 -- combat log damage events and the position of their critical flag
 local CRIT_FLAG = { SWING_DAMAGE = 18, RANGE_DAMAGE = 21, SPELL_DAMAGE = 21, SPELL_PERIODIC_DAMAGE = 21 }
--- triggers: setting key (also the sound file name), label, and description
-local TRIGGERS = {
+-- events: setting key and chat command, label, description, and for pings the game sound to mute
+local EVENTS = {
   { key = "crit", label = "Critical hit", help = "you land a critical hit" },
   { key = "herb", label = "Herb gathered", help = "you gather an herb" },
-  { key = "ping", label = "Ping", help = "a ping is placed, one file per ping type, instead of the game's ping sounds" },
+  { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = 5350036 },
+  { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = 5342387 },
+  { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = 5339006 },
+  { key = "onmyway", label = "Ping: On my way", help = "an on-my-way ping is placed", mute = 5340605 },
+  { key = "threat", label = "Ping: Threat", help = "a threatening alert ping is placed", mute = 5340601 },
+  { key = "nonthreat", label = "Ping: Look here", help = "a look-here ping is placed", mute = 5339002 },
+  { key = "action", label = "Ping: Spell or item", help = "a spell or item ping is placed", mute = 7903953 },
+}
+-- ping events by the icon name in the chat message; pings without icon are spell or item pings
+local PING_ICONS = {
+  attack = "attack", warning = "warning", assist = "assist", onmyway = "onmyway",
+  threat = "threat", nonthreat = "nonthreat",
 }
 
 -- whether a value is hidden from addons (12.x secret values)
@@ -26,40 +33,50 @@ local function Secret(value)
   return issecretvalue ~= nil and issecretvalue(value)
 end
 
--- time of the last sound per file, and files already warned about as missing
+-- time of the last sound per event, and files already warned about as missing
 local lastPlayed, warned = {}, {}
 
--- play a sound file (default: named after the trigger) when the trigger is on; warn once when missing
-local function Play(key, file)
-  file = file or key
-  if ns.db == nil or not ns.Get(key) or GetTime() - (lastPlayed[file] or 0) < 0.3 then
+-- play the sound chosen for an event; warn once when its file is missing
+local function Play(key)
+  local sound = ns.db ~= nil and ns.Get(key) or ""
+  if sound == "" or GetTime() - (lastPlayed[key] or 0) < 0.3 then
     return
   end
-  lastPlayed[file] = GetTime()
-  if PlaySoundFile(FOLDER .. file .. ".mp3", "Master") or PlaySoundFile(FOLDER .. file .. ".ogg", "Master") then
-    return
-  end
-  if not warned[file] then
-    warned[file] = true
-    ns.Warn("Sound file missing: " .. ns.Color("value", "Sounds/" .. file .. ".mp3")
-      .. " or " .. ns.Color("value", ".ogg") .. " (restart the game after adding files)")
+  lastPlayed[key] = GetTime()
+  if not PlaySoundFile(FOLDER .. sound, "Master") and not warned[sound] then
+    warned[sound] = true
+    ns.Warn("Sound file missing: " .. ns.Color("value", "Sounds/" .. sound)
+      .. " (restart the game after adding files)")
   end
 end
 
--- mute or unmute the game's ping sounds to match the ping setting
-local function UpdatePingMute()
-  local mute = ns.Get("ping") and MuteSoundFile or UnmuteSoundFile
-  for _, id in ipairs(PING_FILES) do
-    mute(id)
+-- mute the game's ping sound while an own sound replaces it
+local function UpdateMute(event)
+  if ns.Get(event.key) == "" then
+    UnmuteSoundFile(event.mute)
+  else
+    MuteSoundFile(event.mute)
   end
 end
 
--- current state of every trigger
+-- display name of a setting value
+local function SoundName(event, sound)
+  if sound ~= "" then
+    return sound
+  end
+  return event.mute and "game sound" or "off"
+end
+
+-- current sound of every event
 local function Status()
-  for _, trigger in ipairs(TRIGGERS) do
-    ns.Status(trigger.label, ns.OnOff(ns.Get(trigger.key)))
+  for _, event in ipairs(EVENTS) do
+    local sound = ns.Get(event.key)
+    ns.Status(event.label, sound == "" and ns.Color("muted", SoundName(event, sound)) or sound)
   end
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
+  if #SOUNDS == 0 then
+    ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "Sounds/Sounds.lua"))
+  end
 end
 
 -- own GUID, to find the player's hits in the combat log
@@ -104,14 +121,14 @@ function events.UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
   end
 end
 
--- ping placed by anyone in the group, announced through chat; type from the message icon
+-- ping placed by anyone in the group, announced through chat; type from the message icon,
+-- hidden during instance combat lockdown
 function events.CHAT_MSG_PING(text)
-  local kind = "nonthreat"
-  if not Secret(text) then
-    kind = text:match("ping_chat_(%a+)")
-    kind = PING_TYPES[kind] and kind or "action"
+  if Secret(text) then
+    Play("nonthreat")
+  else
+    Play(PING_ICONS[text:match("ping_chat_(%a+)")] or "action")
   end
-  Play("ping", "ping_" .. kind)
 end
 
 -- one frame dispatching all events above
@@ -128,25 +145,53 @@ frame:SetScript("OnEvent", function(_, event, ...)
   events[event](...)
 end)
 
--- saved state; settings page and ping mute once loaded
-ns.Store("NoiseOnEventDB", { crit = true, herb = true, ping = true }, function()
+-- saved state: no sound for any event by default
+local defaults = {}
+for _, event in ipairs(EVENTS) do
+  defaults[event.key] = ""
+end
+
+-- settings page with one sound dropdown per event, and the ping mutes, once loaded
+ns.Store("NoiseOnEventDB", defaults, function()
   ns.Settings()
-  for _, trigger in ipairs(TRIGGERS) do
-    local onChange = trigger.key == "ping" and UpdatePingMute or nil
-    ns.Checkbox(trigger.key, trigger.label, "Play a sound from the Sounds folder when " .. trigger.help, onChange)
+  for _, event in ipairs(EVENTS) do
+    local choices = { { "", SoundName(event, "") } }
+    for _, sound in ipairs(SOUNDS) do
+      table.insert(choices, { sound, sound })
+    end
+    local onChange = event.mute and function() UpdateMute(event) end or nil
+    ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
+    if event.mute then
+      UpdateMute(event)
+    end
   end
-  UpdatePingMute()
 end)
 
--- one on|off chat command per trigger
-for _, trigger in ipairs(TRIGGERS) do
+-- listed sound file matching a chat argument, ignoring case; "" for off
+local function FindSound(word)
+  if word:lower() == "off" then
+    return ""
+  end
+  for _, sound in ipairs(SOUNDS) do
+    if sound:lower() == word:lower() then
+      return sound
+    end
+  end
+end
+
+-- one chat command per event, choosing a listed sound or off
+for _, event in ipairs(EVENTS) do
   ns.Command({
-    name = trigger.key,
-    help = "play a sound when " .. trigger.help,
-    args = { { name = "state", choices = { "on", "off" } } },
+    name = event.key,
+    help = "sound file (or off) when " .. event.help,
+    args = { { name = "sound" } },
     run = function(args)
-      ns.Set(trigger.key, args.state == "on")
-      ns.Status(trigger.label, ns.OnOff(ns.Get(trigger.key)))
+      local sound = FindSound(args.sound)
+      if not sound then
+        return ns.Error("Unknown sound - listed: " .. ns.Color("value", table.concat(SOUNDS, ", ")))
+      end
+      ns.Set(event.key, sound)
+      ns.Status(event.label, SoundName(event, sound))
     end,
   })
 end
