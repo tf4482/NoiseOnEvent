@@ -11,7 +11,8 @@ pings, your sound replaces the game's ping sound.
 - **Pings** - one sound per ping type (attack, warning, assist, on my way, threat, look
   here, spell or item ping); the game's sound for that type is muted while one is set.
 - **Own sounds** - any `.mp3` or `.ogg` files in the addon's `Sounds` folder, listed in
-  `Sounds/Sounds.lua`; a missing file gets one warning in chat.
+  `Sounds/Sounds.lua` by `Sounds/update-sounds.bat`; a missing file gets one warning in
+  chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
 - **Settings page** - one dropdown per event in the game menu under Options > AddOns, also
@@ -22,8 +23,9 @@ pings, your sound replaces the game's ping sound.
 
 1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases).
 2. Unzip it into `World of Warcraft/<game folder>/Interface/AddOns/`.
-3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/Sounds/` and list each one in
-   `Sounds/Sounds.lua`:
+3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/Sounds/` and double-click
+   `update-sounds.bat` there; it lists every `.mp3` and `.ogg` file in `Sounds.lua`. On
+   macOS or Linux, list them by hand:
 
    ```lua
    ns.sounds = {
