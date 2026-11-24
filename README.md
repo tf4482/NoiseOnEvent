@@ -30,9 +30,14 @@ the game has its own sound for an event, yours replaces it, or you switch it off
   event.
 - **Chat commands** - every event can also be set by slash command.
 
+## Screenshots
+
+![Settings page](docs/settings.png)
+
 ## Install
 
-1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases).
+1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases) or
+   [CurseForge](https://www.curseforge.com/projects/1827447).
 2. Unzip it into `World of Warcraft/<game folder>/Interface/AddOns/`.
 3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/sounds/` and double-click
    `update-sounds.bat` there; it lists every `.mp3` and `.ogg` file in `Sounds.lua`. On
