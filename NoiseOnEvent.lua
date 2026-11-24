@@ -8,11 +8,9 @@ local FOLDER = "Interface\\AddOns\\" .. ADDON .. "\\Sounds\\"
 local SOUNDS = ns.sounds or {}
 -- base spell whose localized name identifies herb gathering casts
 local HERB_SPELL = 2366
--- combat log damage events and the position of their critical flag
-local CRIT_FLAG = { SWING_DAMAGE = 18, RANGE_DAMAGE = 21, SPELL_DAMAGE = 21, SPELL_PERIODIC_DAMAGE = 21 }
 -- events: setting key and chat command, label, description, and for pings the game sound to mute
 local EVENTS = {
-  { key = "crit", label = "Critical hit", help = "you land a critical hit" },
+  { key = "crit", label = "Critical hit", help = "your target takes a critical hit" },
   { key = "herb", label = "Herb gathered", help = "you gather an herb" },
   { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = 5350036 },
   { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = 5342387 },
@@ -79,31 +77,10 @@ local function Status()
   end
 end
 
--- own GUID, to find the player's hits in the combat log
-local playerGUID
-
--- combat log entry: own critical damage
-local function OnCombatLog(_, subevent, _, sourceGUID, ...)
-  local flag = CRIT_FLAG[subevent]
-  if flag and sourceGUID == playerGUID and select(flag - 4, ...) then
-    Play("crit")
-  end
-end
-
 -- event handlers by event name
 local events = {}
 
--- world ready: own GUID known
-function events.PLAYER_LOGIN()
-  playerGUID = UnitGUID("player")
-end
-
--- combat log, where addons may still read it
-function events.COMBAT_LOG_EVENT_UNFILTERED()
-  OnCombatLog(CombatLogGetCurrentEventInfo())
-end
-
--- target took a critical hit from any source; fallback when the combat log is restricted
+-- target took a critical hit from any source; the combat log is closed to addons
 function events.UNIT_COMBAT(_, action, flagText)
   if action == "WOUND" and flagText == "CRITICAL" then
     Play("crit")
@@ -133,14 +110,9 @@ end
 
 -- one frame dispatching all events above
 local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("CHAT_MSG_PING")
 frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
--- combat log where allowed, otherwise critical hits on the target
-local ok, registered = pcall(frame.RegisterEvent, frame, "COMBAT_LOG_EVENT_UNFILTERED")
-if not ok or registered == false then
-  frame:RegisterUnitEvent("UNIT_COMBAT", "target")
-end
+frame:RegisterUnitEvent("UNIT_COMBAT", "target")
 frame:SetScript("OnEvent", function(_, event, ...)
   events[event](...)
 end)

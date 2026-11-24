@@ -5,7 +5,8 @@ pings, your sound replaces the game's ping sound.
 
 ## Features
 
-- **Critical hit** - your sound when you land a critical hit.
+- **Critical hit** - your sound when your target takes a critical hit, from anyone; the
+  game hides the source of a hit from addons.
 - **Herb gathered** - your sound when an herb gathering cast succeeds.
 - **Pings** - one sound per ping type (attack, warning, assist, on my way, threat, look
   here, spell or item ping); the game's sound for that type is muted while one is set.
@@ -40,7 +41,7 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 
 ```text
 /noise                        show the sound of every event
-/noise crit <sound>|off       sound on critical hits
+/noise crit <sound>|off       sound on critical hits on your target
 /noise herb <sound>|off       sound when you gather an herb
 /noise attack <sound>|off     sound for attack pings (off: game sound)
 /noise warning <sound>|off    sound for warning pings
