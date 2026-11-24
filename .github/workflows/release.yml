@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - "v*"
+  # manual start on a tag, when the tag push did not trigger a run
+  workflow_dispatch:
 
 permissions:
   contents: write
