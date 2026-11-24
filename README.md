@@ -12,8 +12,8 @@ pings, your sound replaces the game's ping sound.
 - **Ore mined** - your sound when a mining cast succeeds.
 - **Pings** - one sound per ping type (attack, warning, assist, on my way, threat, look
   here, spell or item ping); the game's sound for that type is muted while one is set.
-- **Own sounds** - any `.mp3` or `.ogg` files in the addon's `Sounds` folder, listed in
-  `Sounds/Sounds.lua` by `Sounds/update-sounds.bat`; a missing file gets one warning in
+- **Own sounds** - any `.mp3` or `.ogg` files in the addon's `sounds` folder, listed in
+  `sounds/Sounds.lua` by `sounds/update-sounds.bat`; a missing file gets one warning in
   chat.
 - **Remembered** - settings are saved per account, or per character with one checkbox;
   no event plays a sound until you pick one.
@@ -26,7 +26,7 @@ pings, your sound replaces the game's ping sound.
 
 1. Download `NoiseOnEvent-vX.Y.Z.zip` from the [releases](https://github.com/tf4482/NoiseOnEvent/releases).
 2. Unzip it into `World of Warcraft/<game folder>/Interface/AddOns/`.
-3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/Sounds/` and double-click
+3. Copy your sound files into `Interface/AddOns/NoiseOnEvent/sounds/` and double-click
    `update-sounds.bat` there; it lists every `.mp3` and `.ogg` file in `Sounds.lua`. On
    macOS or Linux, list them by hand:
 
@@ -40,7 +40,7 @@ pings, your sound replaces the game's ping sound.
 4. Restart the game (new files are only found after a restart), then pick a sound per
    event under Options > AddOns > NoiseOnEvent.
 
-Back up the `Sounds` folder before updating; an update replaces the addon folder.
+Back up the `sounds` folder before updating; an update replaces the addon folder.
 
 ## Usage
 
@@ -63,7 +63,7 @@ Back up the `Sounds` folder before updating; an update replaces the addon folder
 /noise help                   list all commands
 ```
 
-`<sound>` is a file name from `Sounds/Sounds.lua`; put names with spaces in quotes.
+`<sound>` is a file name from `sounds/Sounds.lua`; put names with spaces in quotes.
 
 ## Examples
 
