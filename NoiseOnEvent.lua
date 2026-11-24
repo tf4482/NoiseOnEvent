@@ -1,4 +1,5 @@
--- NoiseOnEvent: plays player-chosen sound files on critical hits, gathering, and pings
+-- NoiseOnEvent: plays player-chosen sound files on game events, replacing the game's sound
+-- where it has one
 
 local ADDON, ns = ...
 
@@ -10,21 +11,64 @@ local SOUNDS = ns.sounds or {}
 local OFF = "off"
 -- shortest time between two sounds of one event, in seconds
 local MIN_DELAY = 0.3
--- base spells whose localized names identify gathering casts
-local HERB_SPELL, MINING_SPELL = 2366, 2575
--- events: setting key and chat command, label, description, optional spam protection
--- setting, and for pings the game sound to mute
+-- base spells whose localized names identify profession casts
+local SPELLS = { herb = 2366, mining = 2575, skinning = 8613, disenchant = 13262 }
+-- game sound files: ready check (also dungeon finder and PvP), PvP queue, invite, whisper,
+-- level up, achievement, quest turned in
+local READY, PVP, INVITE, WHISPER = 567478, 568011, 567451, 567421
+local LEVEL, ACHIEVEMENT, QUEST = 569593, 569143, 567439
+
+-- events in page order: setting key and chat command, label, description; optional
+-- settings slider shown below (setting key, label, min, max, step), game sound files to
+-- mute, and group of events shown without spacing
 local EVENTS = {
-  { key = "crit", label = "Critical hit", help = "your target takes a critical hit", delay = "critDelay" },
+  { key = "crit", label = "Critical hit", help = "your target takes a critical hit",
+    slider = { "critDelay", "Spam protection (seconds)", 0, 10, 0.5 } },
+  { key = "crittaken", label = "Critical hit taken", help = "you take a critical hit" },
+  { key = "avoid", label = "Dodge, parry, block", help = "you dodge, parry, or block an attack" },
+  { key = "combatstart", label = "Combat start", help = "you enter combat" },
+  { key = "combatend", label = "Combat end", help = "you leave combat" },
+  { key = "targetdied", label = "Target died", help = "your target dies" },
+  { key = "death", label = "You died", help = "you die" },
+  { key = "bosspull", label = "Boss pulled", help = "a boss encounter starts" },
+  { key = "bosskill", label = "Boss defeated", help = "a boss encounter ends in victory" },
   { key = "herb", label = "Herb gathered", help = "you gather an herb" },
   { key = "mining", label = "Ore mined", help = "you mine a deposit" },
-  { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = 5350036 },
-  { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = 5342387 },
-  { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = 5339006 },
-  { key = "onmyway", label = "Ping: On my way", help = "an on-my-way ping is placed", mute = 5340605 },
-  { key = "threat", label = "Ping: Threat", help = "a threatening alert ping is placed", mute = 5340601 },
-  { key = "nonthreat", label = "Ping: Look here", help = "a look-here ping is placed", mute = 5339002 },
-  { key = "action", label = "Ping: Spell or item", help = "a spell or item ping is placed", mute = 7903953 },
+  { key = "skinning", label = "Skinned", help = "you skin a creature" },
+  { key = "fishing", label = "Fish caught", help = "you loot a fishing catch" },
+  { key = "disenchant", label = "Disenchanted", help = "you disenchant an item" },
+  { key = "loot", label = "Rare loot", help = "you loot an item of rare quality or better" },
+  { key = "money", label = "Money received", help = "your money increases" },
+  { key = "auction", label = "Auction sold", help = "an auction of yours sells" },
+  { key = "readycheck", label = "Ready check", help = "a ready check starts", mute = { READY } },
+  { key = "lfg", label = "Dungeon finder ready", help = "the dungeon or raid finder finds a group",
+    mute = { READY } },
+  { key = "pvp", label = "PvP queue ready", help = "a battleground or arena is ready",
+    mute = { READY, PVP } },
+  { key = "invite", label = "Group invite", help = "you are invited to a group", mute = { INVITE } },
+  { key = "whisper", label = "Whisper", help = "you receive a whisper", mute = { WHISPER } },
+  { key = "levelup", label = "Level up", help = "you reach a new level", mute = { LEVEL } },
+  { key = "achievement", label = "Achievement", help = "you earn an achievement", mute = { ACHIEVEMENT } },
+  { key = "quest", label = "Quest turned in", help = "you turn in a quest", mute = { QUEST } },
+  { key = "mail", label = "New mail", help = "new mail arrives" },
+  { key = "durability", label = "Gear damaged", help = "average durability drops below the threshold",
+    slider = { "durabilityLimit", "Durability threshold (%)", 5, 100, 5 } },
+  { key = "bagsfull", label = "Bags full", help = "your bags are full" },
+  { key = "rare", label = "Rare or treasure nearby", help = "a rare or treasure appears on the minimap" },
+  { key = "attack", label = "Ping: Attack", help = "an attack ping is placed", mute = { 5350036 },
+    group = "ping" },
+  { key = "warning", label = "Ping: Warning", help = "a warning ping is placed", mute = { 5342387 },
+    group = "ping" },
+  { key = "assist", label = "Ping: Assist", help = "an assist ping is placed", mute = { 5339006 },
+    group = "ping" },
+  { key = "onmyway", label = "Ping: On my way", help = "an on-my-way ping is placed", mute = { 5340605 },
+    group = "ping" },
+  { key = "threat", label = "Ping: Threat", help = "a threatening alert ping is placed",
+    mute = { 5340601 }, group = "ping" },
+  { key = "nonthreat", label = "Ping: Look here", help = "a look-here ping is placed",
+    mute = { 5339002 }, group = "ping" },
+  { key = "action", label = "Ping: Spell or item", help = "a spell or item ping is placed",
+    mute = { 7903953 }, group = "ping" },
 }
 -- ping events by the icon name in the chat message; pings without icon are spell or item pings
 local PING_ICONS = {
@@ -51,7 +95,10 @@ end
 local function Play(key)
   local sound = ns.db ~= nil and ns.Get(key) or ""
   local event = byKey[key]
-  local delay = math.max(MIN_DELAY, event.delay and ns.Get(event.delay) or 0)
+  local delay = MIN_DELAY
+  if event.key == "crit" then
+    delay = math.max(MIN_DELAY, ns.Get("critDelay"))
+  end
   if sound == "" or sound == OFF or GetTime() - (lastPlayed[key] or 0) < delay then
     return
   end
@@ -63,12 +110,25 @@ local function Play(key)
   end
 end
 
--- mute the game's ping sound while an own sound or off replaces it
-local function UpdateMute(event)
-  if ns.Get(event.key) == "" then
-    UnmuteSoundFile(event.mute)
-  else
-    MuteSoundFile(event.mute)
+-- game sound files muted by this addon now
+local muted = {}
+
+-- mute each game sound file while an event using it has an own sound or off; files shared
+-- by several events stay muted while any of them replaces it
+local function UpdateMutes()
+  local wanted = {}
+  for _, event in ipairs(EVENTS) do
+    for _, file in ipairs(event.mute or {}) do
+      wanted[file] = wanted[file] or ns.Get(event.key) ~= ""
+    end
+  end
+  for file, mute in pairs(wanted) do
+    if mute and not muted[file] then
+      MuteSoundFile(file)
+    elseif not mute and muted[file] then
+      UnmuteSoundFile(file)
+    end
+    muted[file] = mute
   end
 end
 
@@ -85,42 +145,121 @@ local function NoFile(sound)
   return sound == "" or sound == OFF
 end
 
--- play button and test command: the chosen sound, or the game's ping sound when none is set
+-- play button and test command: the chosen sound, or the game sound when none is set
 local function Test(event)
   local sound = ns.Get(event.key)
   if not NoFile(sound) then
     PlaySoundFile(FOLDER .. sound, "Master")
+  elseif sound == "" and event.mute and not muted[event.mute[1]] then
+    PlaySoundFile(event.mute[1], "Master")
   elseif sound == "" and event.mute then
-    PlaySoundFile(event.mute, "Master")
+    ns.Warn(event.label .. ": game sound muted, another event sharing it has its own sound")
   else
     ns.Warn(event.label .. ": sound is off")
   end
 end
 
--- current sound of every event
+-- events with a chosen sound or off; all others keep their default
 local function Status()
+  local count = 0
   for _, event in ipairs(EVENTS) do
     local sound = ns.Get(event.key)
-    ns.Status(event.label, NoFile(sound) and ns.Color("muted", SoundName(event, sound)) or sound)
+    if sound ~= "" then
+      ns.Status(event.label, NoFile(sound) and ns.Color("muted", sound) or sound)
+      count = count + 1
+    end
   end
+  ns.Detail(ns.Color("muted", (count == 0 and "All" or "All other") .. " events: off or game sound"))
   ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
+  ns.Status("Durability threshold", ns.Get("durabilityLimit") .. " %")
   ns.Status("per character", ns.OnOff(ns.char.perCharacter))
   if #SOUNDS == 0 then
     ns.Warn("No sounds listed: add your files to " .. ns.Color("value", "sounds/Sounds.lua"))
   end
 end
 
+-- state for events that fire on changes: money, target death, mail, durability, PvP queue,
+-- vignettes already announced
+local lastMoney, targetDead, hadMail, gearLow = 0, false, false, false
+local pvpStatus, seenVignettes = {}, {}
+
+-- average durability of equipped items in percent, or nil without durable items
+local function Durability()
+  local current, maximum = 0, 0
+  for slot = 1, 19 do
+    local value, max = GetInventoryItemDurability(slot)
+    if value and max and max > 0 then
+      current, maximum = current + value, maximum + max
+    end
+  end
+  return maximum > 0 and current / maximum * 100 or nil
+end
+
 -- event handlers by event name
 local events = {}
 
--- target took a critical hit from any source; the combat log is closed to addons
-function events.UNIT_COMBAT(_, action, flagText)
-  if action == "WOUND" and flagText == "CRITICAL" then
+-- world ready: starting values for events that compare against the previous state
+function events.PLAYER_LOGIN()
+  lastMoney = GetMoney()
+  hadMail = HasNewMail()
+end
+
+-- hit on target or player: critical hits, and dodge, parry, or block of the player
+function events.UNIT_COMBAT(unit, action, flagText)
+  if unit == "target" and action == "WOUND" and flagText == "CRITICAL" then
     Play("crit")
+  elseif unit == "player" and action == "WOUND" and flagText == "CRITICAL" then
+    Play("crittaken")
+  elseif unit == "player" and (action == "DODGE" or action == "PARRY" or action == "BLOCK") then
+    Play("avoid")
   end
 end
 
--- own cast finished: herb gathering or mining
+-- combat start
+function events.PLAYER_REGEN_DISABLED()
+  Play("combatstart")
+end
+
+-- combat end
+function events.PLAYER_REGEN_ENABLED()
+  Play("combatend")
+end
+
+-- new target: remember whether it is already dead
+function events.PLAYER_TARGET_CHANGED()
+  targetDead = UnitIsDead("target") == true
+end
+
+-- target health changed: play once when it dies
+function events.UNIT_HEALTH()
+  local dead = UnitIsDead("target")
+  if Secret(dead) then
+    return
+  end
+  if dead and not targetDead then
+    Play("targetdied")
+  end
+  targetDead = dead == true
+end
+
+-- own death
+function events.PLAYER_DEAD()
+  Play("death")
+end
+
+-- boss encounter starts
+function events.ENCOUNTER_START()
+  Play("bosspull")
+end
+
+-- boss encounter ends; success 1 is a victory
+function events.ENCOUNTER_END(_, _, _, _, success)
+  if success == 1 then
+    Play("bosskill")
+  end
+end
+
+-- own cast finished: herb gathering, mining, skinning, or disenchanting
 function events.UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
   if not spellID or Secret(spellID) then
     return
@@ -129,10 +268,134 @@ function events.UNIT_SPELLCAST_SUCCEEDED(_, _, spellID)
   if not name then
     return
   end
-  if name == C_Spell.GetSpellName(HERB_SPELL) then
-    Play("herb")
-  elseif name == C_Spell.GetSpellName(MINING_SPELL) then
-    Play("mining")
+  for key, base in pairs(SPELLS) do
+    if name == C_Spell.GetSpellName(base) then
+      return Play(key)
+    end
+  end
+end
+
+-- loot window opened: fishing catch
+function events.LOOT_OPENED()
+  if IsFishingLoot() then
+    Play("fishing")
+  end
+end
+
+-- loot message: own item of rare quality or better
+function events.CHAT_MSG_LOOT(text, ...)
+  local guid = select(11, ...)
+  if Secret(text) or Secret(guid) or guid ~= UnitGUID("player") then
+    return
+  end
+  local link = text:match("|Hitem:.-|h.-|h")
+  local quality = link and C_Item.GetItemQualityByID(link)
+  if quality and quality >= Enum.ItemQuality.Rare then
+    Play("loot")
+  end
+end
+
+-- money changed: play when it grows
+function events.PLAYER_MONEY()
+  local money = GetMoney()
+  if money > lastMoney then
+    Play("money")
+  end
+  lastMoney = money
+end
+
+-- auction house notice while the auction house is closed: auction sold
+function events.AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION(notification)
+  if notification == Enum.AuctionHouseNotification.AuctionSold then
+    Play("auction")
+  end
+end
+
+-- same notice while the auction house is open
+events.AUCTION_HOUSE_SHOW_NOTIFICATION = events.AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION
+
+-- ready check started
+function events.READY_CHECK()
+  Play("readycheck")
+end
+
+-- dungeon or raid finder found a group
+function events.LFG_PROPOSAL_SHOW()
+  Play("lfg")
+end
+
+-- battleground or arena queue changed: play once when it becomes ready to enter
+function events.UPDATE_BATTLEFIELD_STATUS(index)
+  local status = GetBattlefieldStatus(index)
+  if status == "confirm" and pvpStatus[index] ~= "confirm" then
+    Play("pvp")
+  end
+  pvpStatus[index] = status
+end
+
+-- group invite received
+function events.PARTY_INVITE_REQUEST()
+  Play("invite")
+end
+
+-- whisper received, in game or through Battle.net
+function events.CHAT_MSG_WHISPER()
+  Play("whisper")
+end
+
+events.CHAT_MSG_BN_WHISPER = events.CHAT_MSG_WHISPER
+
+-- new level reached
+function events.PLAYER_LEVEL_UP()
+  Play("levelup")
+end
+
+-- achievement earned
+function events.ACHIEVEMENT_EARNED()
+  Play("achievement")
+end
+
+-- quest turned in
+function events.QUEST_TURNED_IN()
+  Play("quest")
+end
+
+-- mail state changed: play once when new mail arrives
+function events.UPDATE_PENDING_MAIL()
+  local hasMail = HasNewMail()
+  if hasMail and not hadMail then
+    Play("mail")
+  end
+  hadMail = hasMail
+end
+
+-- durability changed: play once when the average drops below the threshold
+function events.UPDATE_INVENTORY_DURABILITY()
+  local average = Durability()
+  local low = average ~= nil and ns.db ~= nil and average < ns.Get("durabilityLimit")
+  if low and not gearLow then
+    Play("durability")
+  end
+  gearLow = low
+end
+
+-- error message: bags full
+function events.UI_ERROR_MESSAGE(_, message)
+  if not Secret(message) and (message == ERR_INV_FULL or message == ERR_BAG_FULL) then
+    Play("bagsfull")
+  end
+end
+
+-- minimap marker appeared: rare or treasure, once per marker
+function events.VIGNETTE_MINIMAP_UPDATED(guid, onMinimap)
+  if not onMinimap or Secret(guid) or seenVignettes[guid] then
+    return
+  end
+  seenVignettes[guid] = true
+  local info = C_VignetteInfo.GetVignetteInfo(guid)
+  local atlas = info and info.atlasName or ""
+  if atlas:find("VignetteKill") or atlas:find("VignetteLoot") then
+    Play("rare")
   end
 end
 
@@ -146,22 +409,32 @@ function events.CHAT_MSG_PING(text)
   end
 end
 
+-- unit events and the units they are limited to
+local UNIT_EVENTS = {
+  UNIT_COMBAT = { "target", "player" }, UNIT_HEALTH = { "target" }, UNIT_SPELLCAST_SUCCEEDED = { "player" },
+}
+
 -- one frame dispatching all events above
 local frame = CreateFrame("Frame")
-frame:RegisterEvent("CHAT_MSG_PING")
-frame:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-frame:RegisterUnitEvent("UNIT_COMBAT", "target")
+for event in pairs(events) do
+  if UNIT_EVENTS[event] then
+    frame:RegisterUnitEvent(event, unpack(UNIT_EVENTS[event]))
+  else
+    frame:RegisterEvent(event)
+  end
+end
 frame:SetScript("OnEvent", function(_, event, ...)
   events[event](...)
 end)
 
--- saved state: no sound for any event by default, one second crit spam protection
-local defaults = { critDelay = 1 }
+-- saved state: no sound for any event by default, one second crit spam protection,
+-- durability warning below 20 percent
+local defaults = { critDelay = 1, durabilityLimit = 20 }
 for _, event in ipairs(EVENTS) do
   defaults[event.key] = ""
 end
 
--- layout of this addon's settings page, for play buttons the Settings component lacks
+-- layout of this addon's settings page, for controls the Settings component lacks
 local function Layout()
   local title = C_AddOns.GetAddOnMetadata(ADDON, "Title") or ADDON
   for _, category in ipairs(SettingsPanel:GetAllCategories()) do
@@ -169,6 +442,13 @@ local function Layout()
       return SettingsPanel:GetLayout(category)
     end
   end
+end
+
+-- empty row of a few pixels between groups of events
+local function AddSpacer(layout)
+  local spacer = CreateSettingsListSectionHeaderInitializer("")
+  spacer.GetExtent = function() return 12 end
+  layout:AddInitializer(spacer)
 end
 
 -- play the sound of the event a row frame shows now, if it is one of ours
@@ -224,12 +504,17 @@ local function AddPlayButton(layout, event)
   end
 end
 
--- settings page: per event a sound dropdown with play button, and crit spam protection;
--- ping mutes applied once loaded
+-- settings page: per event a sound dropdown with play button and its slider, a small gap
+-- between events except within a group; game sound mutes applied once loaded
 ns.Store("NoiseOnEventDB", defaults, function()
   ns.Settings()
   local layout = Layout()
+  local previous
   for _, event in ipairs(EVENTS) do
+    if layout and previous and not (event.group and event.group == previous.group) then
+      AddSpacer(layout)
+    end
+    previous = event
     local choices = { { "", SoundName(event, "") } }
     if event.mute then
       table.insert(choices, { OFF, OFF })
@@ -237,19 +522,17 @@ ns.Store("NoiseOnEventDB", defaults, function()
     for _, sound in ipairs(SOUNDS) do
       table.insert(choices, { sound, sound })
     end
-    local onChange = event.mute and function() UpdateMute(event) end or nil
+    local onChange = event.mute and UpdateMutes or nil
     ns.Dropdown(event.key, event.label, choices, "Sound to play when " .. event.help, onChange)
     if layout then
       AddPlayButton(layout, event)
     end
-    if event.delay then
-      ns.Slider(event.delay, "Spam protection (seconds)", 0, 10, 0.5,
-        "Shortest time between two sounds for " .. event.label:lower())
-    end
-    if event.mute then
-      UpdateMute(event)
+    if event.slider then
+      local key, label, min, max, step = unpack(event.slider)
+      ns.Slider(key, label, min, max, step, label .. " for " .. event.label:lower())
     end
   end
+  UpdateMutes()
 end)
 
 -- setting value for a chat argument, ignoring case: a listed sound file, off, or game for
@@ -291,6 +574,15 @@ ns.Command({
   run = function(args)
     ns.Set("critDelay", args.seconds)
     ns.Status("Critical hit spam protection", ns.Get("critDelay") .. " s")
+  end,
+})
+ns.Command({
+  name = "durabilitylimit",
+  help = "average durability in percent below which the gear damaged sound plays",
+  args = { { name = "percent", type = "number", min = 5, max = 100 } },
+  run = function(args)
+    ns.Set("durabilityLimit", args.percent)
+    ns.Status("Durability threshold", ns.Get("durabilityLimit") .. " %")
   end,
 })
 -- event keys for the test command
