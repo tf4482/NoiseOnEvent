@@ -1,0 +1,14 @@
+## Interface: 16001, 120105
+## Title: NoiseOnEvent
+## Notes: Plays your own sound files on critical hits, herb gathering, and pings
+## Author: tf4482
+## Version: @project-version@
+## IconTexture: Interface/Icons/INV_Misc_Horn_01
+## SavedVariables: NoiseOnEventDB
+## SavedVariablesPerCharacter: NoiseOnEventCharDB
+
+Output.lua
+Store.lua
+Settings.lua
+Slash.lua
+NoiseOnEvent.lua
