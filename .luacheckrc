@@ -24,6 +24,7 @@ read_globals = {
   "IsInRaid",
   "MinimalSliderWithSteppersMixin",
   "Settings",
+  "SettingsDropdownControlMixin",
   "C_Item",
   "C_Spell",
   "C_VignetteInfo",
